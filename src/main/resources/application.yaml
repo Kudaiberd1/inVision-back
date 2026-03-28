@@ -1,0 +1,21 @@
+spring:
+  application:
+    name: invision
+  datasource:
+    url: ${POSTGRES_URL}
+    username: postgres
+    password: ${POSTGRES_SECRET}
+
+    jpa:
+      hibernate:
+        ddl-auto: update
+      show-sql: true
+      properties:
+        hibernate:
+          format_sql: true
+      database: postgresql
+jwt:
+  auth:
+    converter:
+      resource-id: quiz-share
+      principle-attribute: preferred_username
