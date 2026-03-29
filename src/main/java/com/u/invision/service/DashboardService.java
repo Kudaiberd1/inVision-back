@@ -127,6 +127,10 @@ public class DashboardService {
 			throw new ResponseStatusException(
 					HttpStatus.BAD_REQUEST, "status must be PENDING, ACCEPTED, or REJECTED");
 		}
+		if (status == ApplicationStatus.DRAFT) {
+			throw new ResponseStatusException(
+					HttpStatus.BAD_REQUEST, "status cannot be set to DRAFT via this endpoint");
+		}
 		Form form = formRepository.findById(formId).orElseThrow(() -> notFound("Application not found"));
 		form.setStatus(status);
 	}

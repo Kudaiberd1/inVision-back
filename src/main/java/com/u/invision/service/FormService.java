@@ -1,5 +1,6 @@
 package com.u.invision.service;
 
+import com.u.invision.dto.request.CreateDraftFormRequest;
 import com.u.invision.dto.request.FormRequest;
 import com.u.invision.dto.ai.EvaluatePdfApiModels.ReviewSection;
 import com.u.invision.dto.response.FormResponse;
@@ -7,6 +8,7 @@ import com.u.invision.entity.ApplicationStatus;
 import com.u.invision.entity.CVReview;
 import com.u.invision.entity.EssayReview;
 import com.u.invision.entity.Form;
+import com.u.invision.repository.FormRepository;
 import java.io.IOException;
 import java.time.Instant;
 import java.util.Locale;
@@ -22,20 +24,46 @@ public class FormService {
 	private static final long MAX_PDF_BYTES = 5L * 1024 * 1024;
 	private static final long MAX_VIDEO_BYTES = 50L * 1024 * 1024;
 
+	private final FormRepository formRepository;
 	private final S3Service s3Service;
 	private final FormPersistenceService formPersistenceService;
 	private final AISummarizeService aiSummarizeService;
 
 	public FormService(
+			FormRepository formRepository,
 			S3Service s3Service,
 			FormPersistenceService formPersistenceService,
 			AISummarizeService aiSummarizeService) {
+		this.formRepository = formRepository;
 		this.s3Service = s3Service;
 		this.formPersistenceService = formPersistenceService;
 		this.aiSummarizeService = aiSummarizeService;
 	}
 
-	public FormResponse submit(FormRequest request) {
+	/** Step 1: persist program choice only; fast response for the UI before the long submit step. */
+	public FormResponse createDraft(CreateDraftFormRequest request) {
+		Form form = new Form();
+		form.setFieldOfStudy(request.fieldOfStudy().trim());
+		form.setCreatedAt(Instant.now());
+		form.setStatus(ApplicationStatus.DRAFT);
+		Form saved = formRepository.save(form);
+		return new FormResponse(saved.getId());
+	}
+
+	/**
+	 * Step 2: AI evaluation, S3 uploads, and reviews. Form must exist with status {@link ApplicationStatus#DRAFT}
+	 * and no files stored yet.
+	 */
+	public FormResponse submitDraft(Long formId, FormRequest request) {
+		Form form = formRepository.findById(formId).orElseThrow(() -> notFound(formId));
+		if (form.getStatus() != ApplicationStatus.DRAFT) {
+			throw new ResponseStatusException(
+					HttpStatus.CONFLICT, "Application already submitted or not in draft state");
+		}
+		if (form.getCvUrl() != null || form.getMotivationEssayUrl() != null) {
+			throw new ResponseStatusException(HttpStatus.CONFLICT, "Application files already attached");
+		}
+
 		validatePdf(request.getCv(), "CV");
 		validatePdf(request.getMotivationEssay(), "Motivation essay");
 		validateMp4(request.getIntroductionVideo(), "Introduction video");
@@ -63,7 +91,6 @@ public class FormService {
 					"essay");
 			String videoUrl = s3Service.uploadFile(request.getIntroductionVideo(), "videos");
 
-			Form form = new Form();
 			form.setFullName(request.getFullName().trim());
 			form.setEmail(request.getEmail().trim().toLowerCase(Locale.ROOT));
 			form.setPhone(trimToNull(request.getPhone()));
@@ -75,7 +102,6 @@ public class FormService {
 			form.setCvUrl(cvUrl);
 			form.setMotivationEssayUrl(essayUrl);
 			form.setVideoUrl(videoUrl);
-			form.setCreatedAt(Instant.now());
 			form.setStatus(ApplicationStatus.PENDING);
 
 			CVReview cvReview = aiSummarizeService.toCvReview(form, cvSection);
@@ -85,6 +111,10 @@ public class FormService {
 		} catch (IOException e) {
 			throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "Failed to read uploaded files", e);
 		}
+	}
+
+	private static ResponseStatusException notFound(Long formId) {
+		return new ResponseStatusException(HttpStatus.NOT_FOUND, "Application not found: " + formId);
 	}
 
 	private static void validatePdf(MultipartFile file, String label) {

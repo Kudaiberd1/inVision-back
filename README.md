@@ -60,21 +60,26 @@ Send `Authorization: Bearer <token>` for dashboard calls.
 
 ## Main endpoints
 
-### Applicant
+### Applicant (two steps)
 
-| Method | Path | Description |
-|--------|------|-------------|
-| `POST` | `/api/forms` | Multipart submit (201, body `{"id": <formId>}`) |
+Split so the UI gets an **`id` immediately** after program selection; the slow AI + S3 work runs only on the second request (enables async UX, chatbot `candidateId`, etc.).
 
-**Multipart parts** (field names): `fullName`, `email`, `phone` (optional), `dateOfBirth` (`MM/dd/yyyy`), `city`, `schoolUniversity`, `gpa`, `fieldOfStudy`, `cv` (PDF ≤ 5 MB), `motivationEssay` (PDF ≤ 5 MB), `introductionVideo` (MP4 ≤ 50 MB).
+| Step | Method | Path | Body | Response |
+|------|--------|------|------|----------|
+| 1 | `POST` | `/api/forms/draft` | JSON `{ "fieldOfStudy": "<program name>" }` | **201** `{ "id": <formId> }` — `Form` row with status `DRAFT`, only program set |
+| 2 | `POST` | `/api/forms/{id}/submit` | `multipart/form-data` (same parts as before) | **200** `{ "id": <formId> }` — AI, S3, `CVReview` + `EssayReview`; status → `PENDING` |
 
-Flow: validate files → call AI twice (CV + essay) → upload to S3 → persist `Form`, `CVReview`, `EssayReview` in one transaction.
+**Multipart parts** for step 2: `fullName`, `email`, `phone` (optional), `dateOfBirth` (`MM/dd/yyyy`), `city`, `schoolUniversity`, `gpa`, `fieldOfStudy` (should match chosen program), `cv` (PDF ≤ 5 MB), `motivationEssay` (PDF ≤ 5 MB), `introductionVideo` (MP4 ≤ 50 MB).
+
+Step 2 returns **409 Conflict** if the form is not `DRAFT` or files were already attached. **404** if `id` is unknown.
+
+**DB note:** Draft rows need `NULL` personal columns and status **`DRAFT`**. Older PostgreSQL schemas may still enforce `NOT NULL` on those columns and a **`CHECK` on `status`** that only lists `PENDING` / `ACCEPTED` / `REJECTED`. **Run once:** `scripts/postgres-allow-draft-nulls.sql` (relaxes columns + widens the status check).
 
 ### Interview (proxied to AI)
 
 | Method | Path | Description |
 |--------|------|-------------|
-| `POST` | `/api/interview/start` | Body: `candidateId`, `candidateStage` (normalized to `school` / `university` / `unknown`) |
+| `POST` | `/api/interview/start` | Body: `candidateId`, `candidateStage` (normalized to `school` / `university` / `unknown`). Use **`candidateId` = string form id** from `POST /api/forms/draft` so the dashboard can match the interview. |
 | `POST` | `/api/interview/{sessionId}/reply` | Forwards to AI; when the interview completes, result is stored in `interview_results` |
 
 ### Dashboard (JWT)
@@ -110,4 +115,4 @@ Flow: validate files → call AI twice (CV + essay) → upload to S3 → persist
 
 ---
 
-Hackathon / MVP focus: **`POST /api/forms`** + AI integration + S3 + PostgreSQL, plus **`/api/dashboard/*`** for reviewers with JWT.
+Hackathon / MVP focus: **`POST /api/forms/draft`** + **`POST /api/forms/{id}/submit`** (AI + S3 + PostgreSQL), plus **`/api/dashboard/*`** for reviewers with JWT.

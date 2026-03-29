@@ -27,26 +27,33 @@ public class Form {
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
 	private Long id;
 
-	@Column(nullable = false)
+	/** Null while {@link ApplicationStatus#DRAFT}. DB column must allow NULL (see {@code scripts/postgres-allow-draft-nulls.sql}). */
+	@Column(nullable = true)
 	private String fullName;
 
-	@Column(nullable = false)
+	/** Null while {@link ApplicationStatus#DRAFT}. */
+	@Column(nullable = true)
 	private String email;
 
 	private String phone;
 
-	@Column(nullable = false)
+	/** Null while {@link ApplicationStatus#DRAFT}. */
+	@Column(nullable = true)
 	private LocalDate dateOfBirth;
 
-	@Column(nullable = false)
+	/** Null while {@link ApplicationStatus#DRAFT}. */
+	@Column(nullable = true)
 	private String city;
 
-	@Column(nullable = false)
+	/** Null while {@link ApplicationStatus#DRAFT}. */
+	@Column(nullable = true)
 	private String schoolUniversity;
 
-	@Column(nullable = false, precision = 4, scale = 2)
+	/** Null while {@link ApplicationStatus#DRAFT}. */
+	@Column(nullable = true, precision = 4, scale = 2)
 	private BigDecimal gpa;
 
+	/** Set on draft creation (chosen program). May be updated on final submit. */
 	@Column(nullable = false)
 	private String fieldOfStudy;
 
@@ -64,7 +71,7 @@ public class Form {
 	@PrePersist
 	void prePersistDefaults() {
 		if (status == null) {
-			status = ApplicationStatus.PENDING;
+			status = ApplicationStatus.DRAFT;
 		}
 	}
 }
