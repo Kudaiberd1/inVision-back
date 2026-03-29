@@ -1,21 +1,35 @@
 spring:
   application:
     name: invision
+  servlet:
+    multipart:
+      max-file-size: 50MB
+      max-request-size: 60MB
   datasource:
-    url: ${POSTGRES_URL}
+    url: jdbc:postgresql://localhost:5432/invision
     username: postgres
-    password: ${POSTGRES_SECRET}
-
-    jpa:
+    password: kudaiberdi.08
+    driver-class-name: org.postgresql.Driver
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+    properties:
       hibernate:
-        ddl-auto: update
-      show-sql: true
-      properties:
-        hibernate:
-          format_sql: true
-      database: postgresql
+        format_sql: true
+    database-platform: org.hibernate.dialect.PostgreSQLDialect
+
 jwt:
-  auth:
-    converter:
-      resource-id: quiz-share
-      principle-attribute: preferred_username
+  secret: a9F3kL2mQ8xZ7vB1pR5sT6yU4nW0cHjE
+  expiration: 86400000
+
+aws:
+  access-key: ${AWS_ACCESS_KEY}
+  secret-key: ${AWS_SECRET_KEY}
+  s3:
+    bucket-name: media-bucket-quizshare
+  region: eu-north-1
+
+ai:
+  evaluator:
+    base-url: http://127.0.0.1:8000
