@@ -6,9 +6,9 @@ spring:
       max-file-size: 50MB
       max-request-size: 60MB
   datasource:
-    url: jdbc:postgresql://localhost:5432/invision
+    url: ${POSTGRES_URL}
     username: postgres
-    password: kudaiberdi.08
+    password: ${POSTGRES_SECRET}
     driver-class-name: org.postgresql.Driver
   jpa:
     hibernate:
@@ -20,7 +20,7 @@ spring:
     database-platform: org.hibernate.dialect.PostgreSQLDialect
 
 jwt:
-  secret: a9F3kL2mQ8xZ7vB1pR5sT6yU4nW0cHjE
+  secret: ${JWT_SECRET}
   expiration: 86400000
 
 aws:
