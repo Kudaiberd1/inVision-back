@@ -13,12 +13,14 @@ import java.io.IOException;
 import java.time.Instant;
 import java.util.Locale;
 import java.util.Objects;
+import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
 
 @Service
+@RequiredArgsConstructor
 public class FormService {
 
 	private static final long MAX_PDF_BYTES = 5L * 1024 * 1024;
@@ -28,32 +30,15 @@ public class FormService {
 	private final S3Service s3Service;
 	private final FormPersistenceService formPersistenceService;
 	private final AISummarizeService aiSummarizeService;
-
-	public FormService(
-			FormRepository formRepository,
-			S3Service s3Service,
-			FormPersistenceService formPersistenceService,
-			AISummarizeService aiSummarizeService) {
-		this.formRepository = formRepository;
-		this.s3Service = s3Service;
-		this.formPersistenceService = formPersistenceService;
-		this.aiSummarizeService = aiSummarizeService;
-	}
-
-	/** Step 1: persist program choice only; fast response for the UI before the long submit step. */
 	public FormResponse createDraft(CreateDraftFormRequest request) {
 		Form form = new Form();
-		form.setFieldOfStudy(request.fieldOfStudy().trim());
+		form.setFieldOfStudy(request.getFieldOfStudy().trim());
 		form.setCreatedAt(Instant.now());
 		form.setStatus(ApplicationStatus.DRAFT);
 		Form saved = formRepository.save(form);
 		return new FormResponse(saved.getId());
 	}
 
-	/**
-	 * Step 2: AI evaluation, S3 uploads, and reviews. Form must exist with status {@link ApplicationStatus#DRAFT}
-	 * and no files stored yet.
-	 */
 	public FormResponse submitDraft(Long formId, FormRequest request) {
 		Form form = formRepository.findById(formId).orElseThrow(() -> notFound(formId));
 		if (form.getStatus() != ApplicationStatus.DRAFT) {

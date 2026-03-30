@@ -5,6 +5,7 @@ import java.net.URI;
 import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
 import java.util.UUID;
+import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
@@ -15,6 +16,7 @@ import software.amazon.awssdk.services.s3.model.GetObjectRequest;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 
 @Service
+@RequiredArgsConstructor
 public class S3Service {
 
 	@Value("${aws.s3.bucket-name}")
@@ -24,14 +26,6 @@ public class S3Service {
 	private String region;
 
 	private final S3Client s3Client;
-
-	public S3Service(S3Client s3Client) {
-		this.s3Client = s3Client;
-	}
-
-	/**
-	 * @param folder S3 prefix without leading slash, e.g. {@code cv}, {@code essay}, {@code videos}
-	 */
 	public String uploadFile(MultipartFile file, String folder) throws IOException {
 		String dir = folder == null ? "" : folder.replaceAll("^/+|/+$", "");
 		String safeName = sanitizeFilename(file.getOriginalFilename());
@@ -72,11 +66,6 @@ public class S3Service {
 		String base = "https://%s.s3.%s.amazonaws.com/".formatted(bucketName, region);
 		return base + UriUtils.encodePath(key, StandardCharsets.UTF_8);
 	}
-
-	/**
-	 * Downloads an object whose {@linkplain #publicObjectUrl(String) public URL} is {@code urlString}.
-	 * Path segments in the URL must match the configured bucket (virtual-hosted style).
-	 */
 	public byte[] downloadBytesFromPublicUrl(String urlString) {
 		if (urlString == null || urlString.isBlank()) {
 			throw new IllegalArgumentException("URL is blank");

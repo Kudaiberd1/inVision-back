@@ -21,13 +21,11 @@ public class InterviewController {
 		this.interviewService = interviewService;
 	}
 
-	/** Proxies to {@code POST {ai}/interview/start} — returns first question and {@code session_id}. */
 	@PostMapping("/start")
 	public InterviewSessionResponse start(@Valid @RequestBody InterviewStartRequest request) {
 		return interviewService.start(request);
 	}
 
-	/** Proxies to {@code POST {ai}/interview/{session_id}/reply} — next question or final state. */
 	@PostMapping("/{sessionId}/reply")
 	public InterviewSessionResponse reply(
 			@PathVariable String sessionId, @Valid @RequestBody InterviewReplyRequest request) {

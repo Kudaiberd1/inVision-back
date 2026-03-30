@@ -27,33 +27,26 @@ public class Form {
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
 	private Long id;
 
-	/** Null while {@link ApplicationStatus#DRAFT}. DB column must allow NULL (see {@code scripts/postgres-allow-draft-nulls.sql}). */
 	@Column(nullable = true)
 	private String fullName;
 
-	/** Null while {@link ApplicationStatus#DRAFT}. */
 	@Column(nullable = true)
 	private String email;
 
 	private String phone;
 
-	/** Null while {@link ApplicationStatus#DRAFT}. */
 	@Column(nullable = true)
 	private LocalDate dateOfBirth;
 
-	/** Null while {@link ApplicationStatus#DRAFT}. */
 	@Column(nullable = true)
 	private String city;
 
-	/** Null while {@link ApplicationStatus#DRAFT}. */
 	@Column(nullable = true)
 	private String schoolUniversity;
 
-	/** Null while {@link ApplicationStatus#DRAFT}. */
 	@Column(nullable = true, precision = 4, scale = 2)
 	private BigDecimal gpa;
 
-	/** Set on draft creation (chosen program). May be updated on final submit. */
 	@Column(nullable = false)
 	private String fieldOfStudy;
 

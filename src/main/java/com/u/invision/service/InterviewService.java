@@ -66,10 +66,6 @@ public class InterviewService {
 		}
 	}
 
-	/**
-	 * External interview API only accepts {@code school} | {@code university} | {@code unknown}. Maps common UI
-	 * values (e.g. {@code college-university}) to those literals.
-	 */
 	static String normalizeCandidateStage(String raw) {
 		if (raw == null || raw.isBlank()) {
 			return null;

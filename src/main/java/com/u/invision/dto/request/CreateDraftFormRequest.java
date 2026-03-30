@@ -1,11 +1,20 @@
 package com.u.invision.dto.request;
 
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 
-/**
- * Step 1: applicant picks a program only. Creates a {@link com.u.invision.entity.Form} with status
- * {@code DRAFT} and other fields null until step 2 ({@code POST /api/forms/{id}/submit}).
- */
-public record CreateDraftFormRequest(
-		@NotBlank @Size(max = 512) String fieldOfStudy) {}
+@Data
+@Builder
+@AllArgsConstructor
+@NoArgsConstructor
+public class CreateDraftFormRequest {
+
+    @NotBlank
+    @Size(max = 512)
+    private String fieldOfStudy;
+}

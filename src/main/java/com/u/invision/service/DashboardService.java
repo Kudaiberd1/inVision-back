@@ -28,6 +28,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -36,6 +37,7 @@ import org.springframework.web.server.ResponseStatusException;
 
 @Slf4j
 @Service
+@RequiredArgsConstructor
 public class DashboardService {
 
 	private final FormRepository formRepository;
@@ -44,19 +46,6 @@ public class DashboardService {
 	private final InterviewResultRepository interviewResultRepository;
 	private final ApplicantPdfTexService applicantPdfTexService;
 	private final ObjectMapper objectMapper = new ObjectMapper();
-
-	public DashboardService(
-			FormRepository formRepository,
-			CVReviewRepository cvReviewRepository,
-			EssayReviewRepository essayReviewRepository,
-			InterviewResultRepository interviewResultRepository,
-			ApplicantPdfTexService applicantPdfTexService) {
-		this.formRepository = formRepository;
-		this.cvReviewRepository = cvReviewRepository;
-		this.essayReviewRepository = essayReviewRepository;
-		this.interviewResultRepository = interviewResultRepository;
-		this.applicantPdfTexService = applicantPdfTexService;
-	}
 
 	@Transactional(readOnly = true)
 	public List<CandidateSummaryResponse> listCandidates() {

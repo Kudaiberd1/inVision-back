@@ -13,16 +13,13 @@ public class EvaluatePdfApiModels {
 		@JsonProperty("user_id")
 		public String userId;
 
-		/** Current {@code POST /evaluate/pdf} shape: scores/evidence live here (cv or essay per {@link Meta#mode}). */
 		public Meta meta;
 
 		public ReviewSection evaluation;
 
-		/** Older aggregate payloads (optional). */
 		public ReviewSection cv;
 		public ReviewSection essay;
 
-		/** Legacy flat root (optional). */
 		public Scores scores;
 		public Evidence evidence;
 		public List<String> keywords;

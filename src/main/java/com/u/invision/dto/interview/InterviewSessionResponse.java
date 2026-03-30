@@ -5,10 +5,6 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import java.util.ArrayList;
 import java.util.List;
 
-/**
- * Mirrors the external LLM interview API (start + reply). Extra fields are ignored for forward
- * compatibility.
- */
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class InterviewSessionResponse {
 

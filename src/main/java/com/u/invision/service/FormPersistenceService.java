@@ -7,24 +7,17 @@ import com.u.invision.entity.Form;
 import com.u.invision.repository.CVReviewRepository;
 import com.u.invision.repository.EssayReviewRepository;
 import com.u.invision.repository.FormRepository;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
+@RequiredArgsConstructor
 public class FormPersistenceService {
 
 	private final FormRepository formRepository;
 	private final CVReviewRepository cvReviewRepository;
 	private final EssayReviewRepository essayReviewRepository;
-
-	public FormPersistenceService(
-			FormRepository formRepository,
-			CVReviewRepository cvReviewRepository,
-			EssayReviewRepository essayReviewRepository) {
-		this.formRepository = formRepository;
-		this.cvReviewRepository = cvReviewRepository;
-		this.essayReviewRepository = essayReviewRepository;
-	}
 
 	@Transactional
 	public FormResponse saveFormWithReviews(Form form, CVReview cvReview, EssayReview essayReview) {

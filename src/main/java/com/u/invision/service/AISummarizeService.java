@@ -38,11 +38,6 @@ public class AISummarizeService {
 		this.evaluatePdfUrl = base + "/evaluate/pdf";
 	}
 
-	/**
-	 * Calls {@code POST /evaluate/pdf} with multipart {@code file}, {@code mode} ({@code cv} or {@code essay}),
-	 * {@code user_id}. {@link RestTemplate} + {@link MultiValueMap} uses {@code FormHttpMessageConverter}
-	 * (correct multipart boundary for FastAPI).
-	 */
 	public ReviewSection evaluatePdf(byte[] pdfBytes, String filename, String contentType, String mode, String userId) {
 		String name = filename != null && !filename.isBlank() ? filename : "document.pdf";
 

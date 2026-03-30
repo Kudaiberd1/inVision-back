@@ -1,29 +1,20 @@
 package com.u.invision.service;
 
 import java.io.IOException;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.pdfbox.Loader;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.text.PDFTextStripper;
 import org.springframework.stereotype.Service;
 
-/**
- * Loads applicant PDFs from S3 and returns their text wrapped in a LaTeX {@code verbatim} block for
- * frontend TeX renderers (e.g. MathJax full-document, react-latex-next).
- */
 @Slf4j
 @Service
+@RequiredArgsConstructor
 public class ApplicantPdfTexService {
 
 	private final S3Service s3Service;
 
-	public ApplicantPdfTexService(S3Service s3Service) {
-		this.s3Service = s3Service;
-	}
-
-	/**
-	 * @return LaTeX source fragment: {@code \begin{verbatim}...\end{verbatim}} (UTF-8 text from PDF).
-	 */
 	public String pdfPublicUrlToLatexVerbatim(String publicUrl) {
 		if (publicUrl == null || publicUrl.isBlank()) {
 			return wrapVerbatim("% (no document URL)");
@@ -47,7 +38,6 @@ public class ApplicantPdfTexService {
 		}
 	}
 
-	/** LaTeX fragment {@code \\begin{verbatim}...\\end{verbatim}}. Avoids {@code \\r\\n} for consistent line breaks. */
 	private static String wrapVerbatim(String inner) {
 		String n = inner.replace("\r\n", "\n");
 		return "\\begin{verbatim}\n" + n + "\n\\end{verbatim}";

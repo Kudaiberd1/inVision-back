@@ -49,7 +49,6 @@ public class InterviewResult {
 	@Column(columnDefinition = "text")
 	private String jurySessionSummary;
 
-	/** Full final API payload (JSON) for future use / new fields without migration. */
 	@Column(columnDefinition = "text")
 	private String responseJson;
 

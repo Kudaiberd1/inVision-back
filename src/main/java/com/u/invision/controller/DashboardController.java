@@ -27,26 +27,18 @@ public class DashboardController {
 	public DashboardController(DashboardService dashboardService) {
 		this.dashboardService = dashboardService;
 	}
-
-	/** Table rows: id, name, field, dates, aggregate AI score, status. */
 	@GetMapping("/candidates")
 	public List<CandidateSummaryResponse> listCandidates() {
 		return dashboardService.listCandidates();
 	}
-
-	/** CV tab: TeX text preview ({@code cvFullText}), original PDF URL ({@code cvPdfUrl}), plus AI review payload. */
 	@GetMapping("/candidates/{id}/cv-review")
 	public CvReviewPanelResponse cvReview(@PathVariable("id") Long formId) {
 		return dashboardService.getCvReview(formId);
 	}
-
-	/** Essay tab: TeX preview ({@code essayFullText}), PDF URL ({@code essayPdfUrl}), same review shape as CV. */
 	@GetMapping("/candidates/{id}/essay-review")
 	public EssayReviewPanelResponse essayReview(@PathVariable("id") Long formId) {
 		return dashboardService.getEssayReview(formId);
 	}
-
-	/** Chatbot tab: Q/A turns, scores, jury summary (from stored interview JSON). */
 	@GetMapping("/candidates/{id}/chatbot-analysis")
 	public ChatbotAnalysisResponse chatbotAnalysis(@PathVariable("id") Long formId) {
 		return dashboardService.getChatbotAnalysis(formId);
