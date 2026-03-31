@@ -5,6 +5,7 @@ import com.u.invision.dto.interview.InterviewSessionResponse;
 import com.u.invision.dto.interview.InterviewSessionResponse.ConversationTurn;
 import com.u.invision.dto.interview.InterviewSessionResponse.InterviewScoring;
 import com.u.invision.dto.request.ApplicationStatusPatchRequest;
+import com.u.invision.dto.response.ExtraActivityResponse;
 import com.u.invision.dto.response.dashboard.ChatbotAnalysisResponse;
 import com.u.invision.dto.response.dashboard.ChatbotTurnResponse;
 import com.u.invision.dto.response.dashboard.CandidateSummaryResponse;
@@ -123,6 +124,18 @@ public class DashboardService {
 		Form form = formRepository.findById(formId).orElseThrow(() -> notFound("Application not found"));
 		form.setStatus(status);
 	}
+
+    public ExtraActivityResponse getExtra(Long formId){
+        var extra = formRepository.getExtraForForm(formId);
+        ExtraActivityResponse extraActivity = ExtraActivityResponse.builder()
+                .codeforces(extra.getCodeforces())
+                .leetcode(extra.getLeetcode())
+                .github(extra.getGithub())
+                .linkedin(extra.getLinkedin())
+                .build();
+
+        return extraActivity;
+    }
 
 	private Form loadForm(Long formId) {
 		return formRepository.findById(formId).orElseThrow(() -> notFound("Application not found"));

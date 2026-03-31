@@ -44,8 +44,26 @@ public class Form {
 	@Column(nullable = true)
 	private String schoolUniversity;
 
-	@Column(nullable = true, precision = 4, scale = 2)
-	private BigDecimal gpa;
+	@Column(nullable = true)
+	private Integer unt_score;
+
+    @Column(nullable = true, precision = 4, scale = 2)
+    private BigDecimal IELTS;
+
+    @Column(nullable = true)
+    private Integer TOEFL;
+
+	@Column(nullable = true)
+	private String codeforces;
+
+	@Column(nullable = true)
+	private String leetcode;
+
+	@Column(nullable = true)
+	private String github;
+
+	@Column(nullable = true)
+	private String linkedin;
 
 	@Column(nullable = false)
 	private String fieldOfStudy;

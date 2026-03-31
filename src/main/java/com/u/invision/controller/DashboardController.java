@@ -1,6 +1,7 @@
 package com.u.invision.controller;
 
 import com.u.invision.dto.request.ApplicationStatusPatchRequest;
+import com.u.invision.dto.response.ExtraActivityResponse;
 import com.u.invision.dto.response.dashboard.ChatbotAnalysisResponse;
 import com.u.invision.dto.response.dashboard.CandidateSummaryResponse;
 import com.u.invision.dto.response.dashboard.CvReviewPanelResponse;
@@ -43,6 +44,11 @@ public class DashboardController {
 	public ChatbotAnalysisResponse chatbotAnalysis(@PathVariable("id") Long formId) {
 		return dashboardService.getChatbotAnalysis(formId);
 	}
+
+    @GetMapping("/candidates/{id}/extra")
+    public ExtraActivityResponse getExtra(@PathVariable("id") Long formId) {
+        return dashboardService.getExtra(formId);
+    }
 
 	@PatchMapping("/candidates/{id}/status")
 	public ResponseEntity<Void> patchStatus(

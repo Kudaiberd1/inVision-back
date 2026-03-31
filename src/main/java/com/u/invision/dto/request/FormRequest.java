@@ -1,5 +1,6 @@
 package com.u.invision.dto.request;
 
+import jakarta.persistence.Column;
 import jakarta.validation.constraints.DecimalMax;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.Email;
@@ -34,9 +35,24 @@ public class FormRequest {
 	private String schoolUniversity;
 
 	@NotNull
-	@DecimalMin("0.0")
-	@DecimalMax("5.0")
-	private BigDecimal gpa;
+	@DecimalMin("0")
+	@DecimalMax("140")
+    private Integer unt_score;
+
+    @NotNull
+    @DecimalMin("0.0")
+    @DecimalMax("9.0")
+    private BigDecimal IELTS;
+
+    @NotNull
+    @DecimalMin("0")
+    @DecimalMax("120")
+    private Integer TOEFL;
+
+    private String codeforces;
+    private String leetcode;
+    private String github;
+    private String linkedin;
 
 	@NotBlank
 	private String fieldOfStudy;
