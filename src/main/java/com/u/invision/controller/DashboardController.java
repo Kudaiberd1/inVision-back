@@ -5,6 +5,7 @@ import com.u.invision.dto.response.ExtraActivityResponse;
 import com.u.invision.dto.response.dashboard.CandidateDetailResponse;
 import com.u.invision.dto.response.dashboard.ChatbotAnalysisResponse;
 import com.u.invision.dto.response.dashboard.CandidateSummaryResponse;
+import com.u.invision.dto.response.dashboard.CodingReviewResponse;
 import com.u.invision.dto.response.dashboard.CvReviewPanelResponse;
 import com.u.invision.dto.response.dashboard.EssayReviewPanelResponse;
 import com.u.invision.dto.response.dashboard.ScoreOverviewResponse;
@@ -25,6 +26,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/api/dashboard")
 @RequiredArgsConstructor
+@SecurityRequirement(name = "bearerAuth")
 public class DashboardController {
 
 	private final DashboardService dashboardService;
@@ -37,6 +39,11 @@ public class DashboardController {
 	@GetMapping("/candidates/{id}/score-overview")
 	public ScoreOverviewResponse getScoreOverview(@PathVariable("id") Long formId) {
 		return dashboardService.getScoreOverview(formId);
+	}
+
+	@GetMapping("/candidates/{id}/coding-review")
+	public CodingReviewResponse getCodingReview(@PathVariable("id") Long formId) {
+		return dashboardService.getCodingReview(formId);
 	}
 
 	@GetMapping("/candidates")

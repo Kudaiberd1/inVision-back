@@ -2,6 +2,8 @@ package com.u.invision.service;
 
 import com.u.invision.dto.ai.EvaluatePdfApiModels.EvaluatePdfResponse;
 import com.u.invision.dto.ai.EvaluatePdfApiModels.Evidence;
+import com.u.invision.dto.ai.EvaluatePdfApiModels.EvidenceComment;
+import com.u.invision.dto.ai.EvaluatePdfApiModels.EvidenceComments;
 import com.u.invision.dto.ai.EvaluatePdfApiModels.ReviewSection;
 import com.u.invision.dto.ai.EvaluatePdfApiModels.Scores;
 import com.u.invision.entity.CVReview;
@@ -113,7 +115,9 @@ public class AISummarizeService {
 			r.setNeedsHumanReview(boolOrNull(s.flags.needsHumanReview));
 		}
 		r.setStrongEvidences(copyEvidenceStrong(s.evidence));
+		r.setStrongEvidenceReasons(copyEvidenceStrongReasons(s.evidenceComments));
 		r.setWeakEvidences(copyEvidenceWeak(s.evidence));
+		r.setWeakEvidenceReasons(copyEvidenceWeakReasons(s.evidenceComments));
 		r.setKeywords(copyKeywords(s.keywords));
 		return r;
 	}
@@ -129,7 +133,9 @@ public class AISummarizeService {
 			r.setNeedsHumanReview(boolOrNull(s.flags.needsHumanReview));
 		}
 		r.setStrongEvidences(copyEvidenceStrong(s.evidence));
+		r.setStrongEvidenceReasons(copyEvidenceStrongReasons(s.evidenceComments));
 		r.setWeakEvidences(copyEvidenceWeak(s.evidence));
+		r.setWeakEvidenceReasons(copyEvidenceWeakReasons(s.evidenceComments));
 		r.setKeywords(copyKeywords(s.keywords));
 		return r;
 	}
@@ -162,12 +168,7 @@ public class AISummarizeService {
 		if (sc == null
 				|| sc.leadership == null
 				|| sc.proactiveness == null
-				|| sc.energy == null
-				|| sc.coreScore == null
-				|| sc.motivation == null
-				|| sc.growthPotential == null
-				|| sc.experienceSignals == null
-				|| sc.finalScore == null) {
+				|| sc.energy == null) {
 			throw new ResponseStatusException(
 					HttpStatus.BAD_GATEWAY, "AI response missing score fields for " + label);
 		}
@@ -189,6 +190,37 @@ public class AISummarizeService {
 			return new ArrayList<>();
 		}
 		return new ArrayList<>(ev.weakPhrases);
+	}
+
+	private static List<String> copyEvidenceStrongReasons(EvidenceComments comments) {
+		List<String> out = new ArrayList<>();
+		if (comments == null || comments.strong == null) {
+			return out;
+		}
+		for (EvidenceComment c : comments.strong) {
+			if (c == null) {
+				continue;
+			}
+			String quote = c.quote != null ? c.quote : "";
+			String comment = c.comment != null ? c.comment : "";
+			out.add(comment.isBlank() ? "" : comment);
+		}
+		return out;
+	}
+
+	private static List<String> copyEvidenceWeakReasons(EvidenceComments comments) {
+		List<String> out = new ArrayList<>();
+		if (comments == null || comments.weak == null) {
+			return out;
+		}
+		for (EvidenceComment c : comments.weak) {
+			if (c == null) {
+				continue;
+			}
+			String comment = c.comment != null ? c.comment : "";
+			out.add(comment.isBlank() ? "" : comment);
+		}
+		return out;
 	}
 
 	private static List<String> copyKeywords(List<String> k) {

@@ -10,6 +10,7 @@ import com.u.invision.dto.response.dashboard.CandidateDetailResponse;
 import com.u.invision.dto.response.dashboard.ChatbotAnalysisResponse;
 import com.u.invision.dto.response.dashboard.ChatbotTurnResponse;
 import com.u.invision.dto.response.dashboard.CandidateSummaryResponse;
+import com.u.invision.dto.response.dashboard.CodingReviewResponse;
 import com.u.invision.dto.response.dashboard.CriteriaScoresResponse;
 import com.u.invision.dto.response.dashboard.CriteriaSummariesResponse;
 import com.u.invision.dto.response.dashboard.CvReviewDetailResponse;
@@ -20,11 +21,13 @@ import com.u.invision.dto.response.dashboard.HighlightResponse;
 import com.u.invision.dto.response.dashboard.ScoreOverviewResponse;
 import com.u.invision.entity.ApplicationStatus;
 import com.u.invision.entity.CVReview;
+import com.u.invision.entity.CodingPlatformReview;
 import com.u.invision.entity.EssayReview;
 import com.u.invision.entity.Form;
 import com.u.invision.entity.InterviewResult;
 import com.u.invision.repository.CVReviewRepository;
 import com.u.invision.repository.EssayReviewRepository;
+import com.u.invision.repository.CodingPlatformReviewRepository;
 import com.u.invision.repository.FormRepository;
 import com.u.invision.repository.InterviewResultRepository;
 
@@ -48,6 +51,7 @@ public class DashboardService {
 	private final CVReviewRepository cvReviewRepository;
 	private final EssayReviewRepository essayReviewRepository;
 	private final InterviewResultRepository interviewResultRepository;
+	private final CodingPlatformReviewRepository codingPlatformReviewRepository;
 	private final ApplicantPdfTexService applicantPdfTexService;
 	private final ObjectMapper objectMapper = new ObjectMapper();
 
@@ -62,7 +66,17 @@ public class DashboardService {
 			}
 			InterviewResult chat = findInterview(form).orElse(null);
 			CriteriaScoresResponse rowCriteria = averageRowCriteria(cv, essay);
-			Integer aiScore = computeAggregateAiScore(cv, essay, chat, form.getUnt_score(), Double.valueOf(String.valueOf(form.getIELTS())), form.getTOEFL());
+			CodingPlatformReview cfReview =
+					loadOrFetchPlatformReview(form, "codeforces", form.getCodeforces(), false);
+			CodingPlatformReview lcReview =
+					loadOrFetchPlatformReview(form, "leetcode", form.getLeetcode(), false);
+			Integer overallScore = computeAggregateOverAllScore(
+					cv,
+					essay,
+					chat,
+					form.getUnt_score(),
+					form.getIELTS() != null ? form.getIELTS().doubleValue() : null,
+					form.getTOEFL(), cfReview.getFinalScore(), lcReview.getFinalScore());
 			out.add(new CandidateSummaryResponse(
 					form.getId(),
 					form.getFullName(),
@@ -70,7 +84,7 @@ public class DashboardService {
 					form.getFieldOfStudy(),
 					programSlug(form.getFieldOfStudy()),
 					form.getCreatedAt(),
-					aiScore,
+					overallScore,
 					rowCriteria,
 					(form.getStatus() != null ? form.getStatus() : ApplicationStatus.PENDING)
 							.name()
@@ -128,23 +142,32 @@ public class DashboardService {
 		int ieltsPoints = 0;
 		int toeflPoints = 0;
 
-		if (cv != null && cv.getFinalScore() != null) {
-			cvLeadershipPoints = ((double) cv.getLeadershipScore() / 100) * 3;
-			cvProactivenessPoints = ((double) cv.getProactivenessScore() / 100) * 3;
-			cvEnergyPoints = ((double) cv.getEnergyScore() / 100) * 3;
-			cvPoints = cvLeadershipPoints + cvProactivenessPoints + cvEnergyPoints;
+		if (cv != null
+				&& cv.getLeadershipScore() != null
+				&& cv.getProactivenessScore() != null
+				&& cv.getEnergyScore() != null) {
+			cvLeadershipPoints = cv.getLeadershipScore();
+			cvProactivenessPoints = cv.getProactivenessScore();
+			cvEnergyPoints = cv.getEnergyScore();
+			cvPoints = (cvLeadershipPoints + cvProactivenessPoints + cvEnergyPoints) / 3.0;
 		}
-		if (essay != null && essay.getFinalScore() != null) {
-			essayLeadershipPoints = ((double) essay.getLeadershipScore() / 100) * 3;
-			essayProactivenessPoints = ((double) essay.getProactivenessScore() / 100) * 3;
-			essayEnergyPoints = ((double) essay.getEnergyScore() / 100) * 3;
-			essayPoints = essayLeadershipPoints + essayProactivenessPoints + essayEnergyPoints;
+		if (essay != null
+				&& essay.getLeadershipScore() != null
+				&& essay.getProactivenessScore() != null
+				&& essay.getEnergyScore() != null) {
+			essayLeadershipPoints = essay.getLeadershipScore();
+			essayProactivenessPoints = essay.getProactivenessScore();
+			essayEnergyPoints = essay.getEnergyScore();
+			essayPoints = (essayLeadershipPoints + essayProactivenessPoints + essayEnergyPoints) / 3.0;
 		}
-		if (chat != null && chat.getChatbotScore() != null) {
-			chatLeadershipPoints = (chat.getLeadershipScore() / 100.0) * 3;
-			chatProactivenessPoints = (chat.getProactivenessScore() / 100.0) * 3;
-			chatEnergyPoints = (chat.getEnergyScore() / 100.0) * 3;
-			chatPoints = chatLeadershipPoints + chatProactivenessPoints + chatEnergyPoints;
+		if (chat != null
+				&& chat.getLeadershipScore() != null
+				&& chat.getProactivenessScore() != null
+				&& chat.getEnergyScore() != null) {
+			chatLeadershipPoints = chat.getLeadershipScore();
+			chatProactivenessPoints = chat.getProactivenessScore();
+			chatEnergyPoints = chat.getEnergyScore();
+			chatPoints = (chatLeadershipPoints + chatProactivenessPoints + chatEnergyPoints) / 3.0;
 		}
 
 		Integer unt = form.getUnt_score();
@@ -192,28 +215,52 @@ public class DashboardService {
 			}
 		}
 
-		int overall = computeAggregateAiScore(
-				cv,
-				essay,
-				chat,
-				unt,
-				form.getIELTS() != null ? form.getIELTS().doubleValue() : null,
-				toefl);
+		CodingPlatformReview cfReview =
+				loadOrFetchPlatformReview(form, "codeforces", form.getCodeforces(), false);
+		CodingPlatformReview lcReview =
+				loadOrFetchPlatformReview(form, "leetcode", form.getLeetcode(), false);
+
+		double roundedCvPoints = Math.round(cvPoints);
+		double roundedEssayPoints = Math.round(essayPoints);
+		double roundedChatPoints = Math.round(chatPoints);
+		double roundedCvLeadership = Math.round(cvLeadershipPoints);
+		double roundedCvProactiveness = Math.round(cvProactivenessPoints);
+		double roundedCvEnergy = Math.round(cvEnergyPoints);
+		double roundedEssayLeadership = Math.round(essayLeadershipPoints);
+		double roundedEssayProactiveness = Math.round(essayProactivenessPoints);
+		double roundedEssayEnergy = Math.round(essayEnergyPoints);
+		double roundedChatLeadership = Math.round(chatLeadershipPoints);
+		double roundedChatProactiveness = Math.round(chatProactivenessPoints);
+		double roundedChatEnergy = Math.round(chatEnergyPoints);
+
+        Integer codeforcesScore = cfReview != null ? cfReview.getFinalScore() : null;
+        Integer leetcodeScore = lcReview != null ? lcReview.getFinalScore() : null;
+
+        int overall = (int) (roundedCvPoints
+				+ roundedEssayPoints
+				+ roundedChatPoints
+				+ untPoints
+				+ ieltsPoints
+				+ toeflPoints
+				+ (codeforcesScore != null ? codeforcesScore : 0)
+				+ (leetcodeScore != null ? leetcodeScore : 0));
 
 		return new ScoreOverviewResponse(
 				overall,
-				cvPoints,
-				essayPoints,
-				chatPoints,
-				cvLeadershipPoints,
-				cvProactivenessPoints,
-				cvEnergyPoints,
-				essayLeadershipPoints,
-				essayProactivenessPoints,
-				essayEnergyPoints,
-				chatLeadershipPoints,
-				chatProactivenessPoints,
-				chatEnergyPoints,
+				roundedCvPoints,
+				roundedEssayPoints,
+				roundedChatPoints,
+				roundedCvLeadership,
+				roundedCvProactiveness,
+				roundedCvEnergy,
+				roundedEssayLeadership,
+				roundedEssayProactiveness,
+				roundedEssayEnergy,
+				roundedChatLeadership,
+				roundedChatProactiveness,
+				roundedChatEnergy,
+				codeforcesScore,
+				leetcodeScore,
 				unt,
 				form.getIELTS() != null ? form.getIELTS().doubleValue() : null,
 				toefl,
@@ -252,6 +299,21 @@ public class DashboardService {
 				.orElseThrow(() -> notFound("No completed interview linked to this candidate (match by full name or email)"));
 		InterviewSessionResponse parsed = parseInterviewJson(result.getResponseJson()).orElse(null);
 		return mapChatbot(result, parsed);
+	}
+
+	@Transactional
+	public CodingReviewResponse getCodingReview(Long formId) {
+		Form form = loadForm(formId);
+
+		CodingPlatformReview cfReview =
+				loadOrFetchPlatformReview(form, "codeforces", form.getCodeforces(), true);
+		CodingPlatformReview lcReview =
+				loadOrFetchPlatformReview(form, "leetcode", form.getLeetcode(), true);
+
+		CodingReviewResponse.PlatformReview cfDto = toPlatformDto(cfReview, form.getCodeforces());
+		CodingReviewResponse.PlatformReview lcDto = toPlatformDto(lcReview, form.getLeetcode());
+
+		return new CodingReviewResponse(cfDto, lcDto);
 	}
 
 	@Transactional
@@ -322,64 +384,176 @@ public class DashboardService {
 				.replaceAll("(^-|-$)", "");
 	}
 
-	private static Integer computeAggregateAiScore(CVReview cv, EssayReview essay, InterviewResult chat, Integer unt, Double ielts, Integer toefl) {
-		double sum = 0;
-		if (cv != null && cv.getFinalScore() != null) {
-			sum += ((double) cv.getLeadershipScore() /100)*3;
-            sum += ((double) cv.getProactivenessScore() /100)*3;
-            sum += ((double) cv.getEnergyScore() /100)*3;
+	private CodingPlatformReview loadOrFetchPlatformReview(
+			Form form, String platform, String handle, boolean fetchIfMissing) {
+		if (handle == null || handle.isBlank()) {
+			return null;
 		}
-		if (essay != null && essay.getFinalScore() != null) {
-			sum += ((double) essay.getLeadershipScore() /100)*3;
-            sum += ((double) essay.getProactivenessScore() /100)*3;
-            sum += ((double) essay.getEnergyScore() /100)*3;
+
+		CodingPlatformReview existing =
+				codingPlatformReviewRepository.findByForm_IdAndPlatform(form.getId(), platform).orElse(null);
+		if (existing != null || !fetchIfMissing) {
+			return existing;
 		}
-		if (chat != null && chat.getChatbotScore() != null) {
-			sum += (chat.getLeadershipScore()/100)*3;
-            sum += (chat.getProactivenessScore()/100)*3;
-            sum += (chat.getEnergyScore()/100)*3;
+
+		try {
+			String url = "http://localhost:3000/review/" + platform + "/" + handle;
+			org.springframework.web.client.RestTemplate rt = new org.springframework.web.client.RestTemplate();
+			String json = rt.getForObject(url, String.class);
+			if (json == null) {
+				return null;
+			}
+			com.fasterxml.jackson.databind.JsonNode node = objectMapper.readTree(json);
+			Integer finalScore = node.path("final_score").isMissingNode() ? null : node.path("final_score").asInt();
+
+			CodingPlatformReview entity = new CodingPlatformReview();
+			entity.setForm(form);
+			entity.setPlatform(platform);
+			entity.setHandle(handle);
+			entity.setRawResponseJson(json);
+			entity.setFinalScore(finalScore);
+			entity.setCreatedAt(java.time.Instant.now());
+			return codingPlatformReviewRepository.save(entity);
+		} catch (Exception e) {
+			log.warn("Failed to fetch coding platform review for {} {}: {}", platform, handle, e.getMessage());
+			return null;
 		}
-        if(unt != null) {
-            if(unt >= 120){
-                sum+=5;
-            }else if(unt >= 110){
-                sum+=4;
-            }else if(unt >= 100){
-                sum+=3;
-            }else if(unt >= 90){
-                sum+=2;
-            }else if(unt >= 80){
-                sum+=1;
-            }
+	}
+
+	private CodingReviewResponse.PlatformReview toPlatformDto(CodingPlatformReview review, String handle) {
+		if (review == null) {
+			return null;
+		}
+		try {
+			com.fasterxml.jackson.databind.JsonNode root =
+					objectMapper.readTree(review.getRawResponseJson());
+			Integer submissionsLastYear = root.path("submissions_last_year").isMissingNode()
+					? null
+					: root.path("submissions_last_year").asInt();
+
+			com.fasterxml.jackson.databind.JsonNode proNode = root.path("proactiveness");
+			Integer proScore = proNode.path("score").isMissingNode() ? null : proNode.path("score").asInt();
+			String proReason = proNode.path("reason").isMissingNode() ? null : proNode.path("reason").asText(null);
+
+			com.fasterxml.jackson.databind.JsonNode skillNode = root.path("skill");
+			Integer skillScore = skillNode.path("score").isMissingNode() ? null : skillNode.path("score").asInt();
+			Object breakdown =
+					skillNode.path("breakdown").isMissingNode()
+							? null
+							: objectMapper.convertValue(skillNode.path("breakdown"), Object.class);
+
+			Integer finalScore = root.path("final_score").isMissingNode() ? null : root.path("final_score").asInt();
+
+			return new CodingReviewResponse.PlatformReview(
+					root.path("platform").asText(),
+					handle,
+					submissionsLastYear,
+					new CodingReviewResponse.Section(proScore, proReason),
+					new CodingReviewResponse.SkillSection(skillScore, breakdown),
+					finalScore);
+		} catch (Exception e) {
+			log.warn("Failed to parse stored coding platform review JSON: {}", e.getMessage());
+			return null;
+		}
+	}
+
+	private static Integer computeAggregateOverAllScore(CVReview cv, EssayReview essay, InterviewResult chat, Integer unt, Double ielts, Integer toefl, Integer codeforcesScore, Integer leetcodeScore) {
+        double cvPoints = 0;
+        double essayPoints = 0;
+        double chatPoints = 0;
+        double cvLeadershipPoints = 0;
+        double cvProactivenessPoints = 0;
+        double cvEnergyPoints = 0;
+        double essayLeadershipPoints = 0;
+        double essayProactivenessPoints = 0;
+        double essayEnergyPoints = 0;
+        double chatLeadershipPoints = 0;
+        double chatProactivenessPoints = 0;
+        double chatEnergyPoints = 0;
+        int untPoints = 0;
+        int ieltsPoints = 0;
+        int toeflPoints = 0;
+
+        if (cv != null
+				&& cv.getLeadershipScore() != null
+				&& cv.getProactivenessScore() != null
+				&& cv.getEnergyScore() != null) {
+            cvLeadershipPoints = cv.getLeadershipScore();
+            cvProactivenessPoints = cv.getProactivenessScore();
+            cvEnergyPoints = cv.getEnergyScore();
+            cvPoints = (cvLeadershipPoints + cvProactivenessPoints + cvEnergyPoints) / 3.0;
         }
-        if(ielts != null) {
-            if(ielts >= 8.0){
-                sum += 5;
-            } else if(ielts >= 7.5){
-                sum += 4;
-            } else if(ielts >= 7.0){
-                sum += 3;
-            } else if(ielts >= 6.5){
-                sum += 2;
-            } else if(ielts >= 6.0){
-                sum += 1;
-            }
+        if (essay != null
+				&& essay.getLeadershipScore() != null
+				&& essay.getProactivenessScore() != null
+				&& essay.getEnergyScore() != null) {
+            essayLeadershipPoints = essay.getLeadershipScore();
+            essayProactivenessPoints = essay.getProactivenessScore();
+            essayEnergyPoints = essay.getEnergyScore();
+            essayPoints = (essayLeadershipPoints + essayProactivenessPoints + essayEnergyPoints) / 3.0;
         }
-        if(toefl != null) {
-            if(toefl >= 110){
-                sum += 5;
-            } else if(toefl >= 100){
-                sum += 4;
-            } else if(toefl >= 90){
-                sum += 3;
-            } else if(toefl >= 80){
-                sum += 2;
-            } else if(toefl >= 60){
-                sum += 1;
+        if (chat != null
+				&& chat.getLeadershipScore() != null
+				&& chat.getProactivenessScore() != null
+				&& chat.getEnergyScore() != null) {
+            chatLeadershipPoints = chat.getLeadershipScore();
+            chatProactivenessPoints = chat.getProactivenessScore();
+            chatEnergyPoints = chat.getEnergyScore();
+            chatPoints = (chatLeadershipPoints + chatProactivenessPoints + chatEnergyPoints) / 3.0;
+        }
+
+        if (unt != null) {
+            if (unt >= 120) {
+                untPoints = 5;
+            } else if (unt >= 110) {
+                untPoints = 4;
+            } else if (unt >= 100) {
+                untPoints = 3;
+            } else if (unt >= 90) {
+                untPoints = 2;
+            } else if (unt >= 80) {
+                untPoints = 1;
             }
         }
 
-		return (int) Math.round(sum);
+        if (ielts != null) {
+            if (ielts >= 8.0) {
+                ieltsPoints = 5;
+            } else if (ielts >= 7.5) {
+                ieltsPoints = 4;
+            } else if (ielts >= 7.0) {
+                ieltsPoints = 3;
+            } else if (ielts >= 6.5) {
+                ieltsPoints = 2;
+            } else if (ielts >= 6.0) {
+                ieltsPoints = 1;
+            }
+        }
+
+        if (toefl != null) {
+            if (toefl >= 110) {
+                toeflPoints = 5;
+            } else if (toefl >= 100) {
+                toeflPoints = 4;
+            } else if (toefl >= 90) {
+                toeflPoints = 3;
+            } else if (toefl >= 80) {
+                toeflPoints = 2;
+            } else if (toefl >= 60) {
+                toeflPoints = 1;
+            }
+        }
+
+        double roundedCvPoints = Math.round(cvPoints);
+        double roundedEssayPoints = Math.round(essayPoints);
+        double roundedChatPoints = Math.round(chatPoints);
+
+		int cf = codeforcesScore != null ? codeforcesScore : 0;
+		int lc = leetcodeScore != null ? leetcodeScore : 0;
+
+        int overall = (int) (roundedCvPoints + roundedEssayPoints + roundedChatPoints + untPoints + ieltsPoints + toeflPoints + cf + lc);
+
+        return overall;
 	}
 
 	private static CriteriaScoresResponse averageRowCriteria(CVReview cv, EssayReview essay) {
@@ -404,43 +578,68 @@ public class DashboardService {
 
 	private static CvReviewDetailResponse mapCvDetail(CVReview cv) {
 		List<HighlightResponse> highlights = new ArrayList<>();
-		for (String line : cv.getStrongEvidences()) {
+		List<String> strong = cv.getStrongEvidences();
+		List<String> strongReasons = cv.getStrongEvidenceReasons();
+		for (int i = 0; i < strong.size(); i++) {
+			String line = strong.get(i);
+			String reason =
+					strongReasons != null && i < strongReasons.size() && strongReasons.get(i) != null
+							? strongReasons.get(i)
+							: "Strong evidence signal from automated CV review.";
 			highlights.add(new HighlightResponse(
-					line,
-					"Strong evidence signal from automated CV review.",
-					"positive"));
+					line, reason, "positive"));
 		}
-		for (String line : cv.getWeakEvidences()) {
+		List<String> weak = cv.getWeakEvidences();
+		List<String> weakReasons = cv.getWeakEvidenceReasons();
+		for (int i = 0; i < weak.size(); i++) {
+			String line = weak.get(i);
+			String reason =
+					weakReasons != null && i < weakReasons.size() && weakReasons.get(i) != null
+							? weakReasons.get(i)
+							: "Weak phrasing / low-specificity signal from automated CV review.";
 			highlights.add(new HighlightResponse(
-					line,
-					"Weak phrasing / low-specificity signal from automated CV review.",
-					"warning"));
+					line, reason, "warning"));
 		}
 		CriteriaScoresResponse cs = new CriteriaScoresResponse(
 				cv.getLeadershipScore(), cv.getProactivenessScore(), cv.getEnergyScore());
-		int overall = cv.getFinalScore() != null ? (int) Math.round(cv.getFinalScore()) : 0;
+
+		// Overall CV score: average of the three dimensions, rounded
+		int overall = avgInt(
+				cv.getLeadershipScore(),
+				avgInt(cv.getProactivenessScore(), cv.getEnergyScore()));
+
 		return new CvReviewDetailResponse(cv.getProfileSummary(), highlights, cs, overall);
 	}
 
 	private static EssayReviewDetailResponse mapEssayDetail(EssayReview essay) {
 		List<HighlightResponse> highlights = new ArrayList<>();
-		for (String line : essay.getStrongEvidences()) {
+		List<String> strong = essay.getStrongEvidences();
+		List<String> strongReasons = essay.getStrongEvidenceReasons();
+		for (int i = 0; i < strong.size(); i++) {
+			String line = strong.get(i);
+			String reason =
+					strongReasons != null && i < strongReasons.size() && strongReasons.get(i) != null
+							? strongReasons.get(i)
+							: "Strong evidence signal from automated essay review.";
 			highlights.add(new HighlightResponse(
-					line,
-					"Strong evidence signal from automated essay review.",
-					"positive"));
+					line, reason, "positive"));
 		}
-		for (String line : essay.getWeakEvidences()) {
+		List<String> weak = essay.getWeakEvidences();
+		List<String> weakReasons = essay.getWeakEvidenceReasons();
+		for (int i = 0; i < weak.size(); i++) {
+			String line = weak.get(i);
+			String reason =
+					weakReasons != null && i < weakReasons.size() && weakReasons.get(i) != null
+							? weakReasons.get(i)
+							: "Weak phrasing signal from automated essay review.";
 			highlights.add(new HighlightResponse(
-					line,
-					"Weak phrasing signal from automated essay review.",
-					"warning"));
+					line, reason, "warning"));
 		}
 		boolean aiFlag = Boolean.TRUE.equals(essay.getPossibleAiGenerated());
 		Integer confidence = aiFlag ? 75 : 15;
 		CriteriaScoresResponse cs = new CriteriaScoresResponse(
 				essay.getLeadershipScore(), essay.getProactivenessScore(), essay.getEnergyScore());
-		int overall = essay.getFinalScore() != null ? (int) Math.round(essay.getFinalScore()) : 0;
+		int overall = avgInt(essay.getLeadershipScore(), avgInt(essay.getProactivenessScore(), essay.getEnergyScore()));
 		return new EssayReviewDetailResponse(
 				essay.getProfileSummary(), highlights, aiFlag, confidence, cs, overall);
 	}
@@ -532,11 +731,17 @@ public class DashboardService {
 	}
 
 	private static int overallChatbotScore(InterviewScoring sc, InterviewResult stored) {
-		if (sc != null && sc.chatbotScore != null) {
-			return (int) Math.round(sc.chatbotScore);
+		// Prefer explicit dimension scores if present
+		if (sc != null) {
+			return avgInt(
+					toInt(sc.leadershipScore),
+					avgInt(toInt(sc.proactivenessScore), toInt(sc.energyScore)));
 		}
-		if (stored.getChatbotScore() != null) {
-			return (int) Math.round(stored.getChatbotScore());
+		// Fallback to scores stored on InterviewResult
+		if (stored != null) {
+			return avgInt(
+					toInt(stored.getLeadershipScore()),
+					avgInt(toInt(stored.getProactivenessScore()), toInt(stored.getEnergyScore())));
 		}
 		return 0;
 	}

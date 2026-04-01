@@ -22,6 +22,8 @@ public class EvaluatePdfApiModels {
 
 		public Scores scores;
 		public Evidence evidence;
+		@JsonProperty("evidence_comments")
+		public EvidenceComments evidenceComments;
 		public List<String> keywords;
 		@JsonProperty("profile_summary")
 		public String profileSummary;
@@ -55,6 +57,7 @@ public class EvaluatePdfApiModels {
 			ReviewSection r = new ReviewSection();
 			r.scores = scores;
 			r.evidence = evidence;
+			r.evidenceComments = evidenceComments;
 			r.keywords = keywords;
 			r.profileSummary = profileSummary;
 			r.recommendation = recommendation;
@@ -79,6 +82,8 @@ public class EvaluatePdfApiModels {
 	public static class ReviewSection {
 		public Scores scores;
 		public Evidence evidence;
+		@JsonProperty("evidence_comments")
+		public EvidenceComments evidenceComments;
 		public List<String> keywords;
 		@JsonProperty("profile_summary")
 		public String profileSummary;
@@ -89,8 +94,15 @@ public class EvaluatePdfApiModels {
 
 	@JsonIgnoreProperties(ignoreUnknown = true)
 	public static class Scores {
+		// New schema: leadership_score / proactiveness_score / energy_score
+		// (older payloads with "leadership" etc. still map because of ignoreUnknown=true elsewhere)
+		@JsonProperty("leadership_score")
 		public Integer leadership;
+
+		@JsonProperty("proactiveness_score")
 		public Integer proactiveness;
+
+		@JsonProperty("energy_score")
 		public Integer energy;
 
 		@JsonProperty("core_score")
@@ -115,6 +127,21 @@ public class EvaluatePdfApiModels {
 
 		@JsonProperty("weak_phrases")
 		public List<String> weakPhrases = new ArrayList<>();
+	}
+
+	@JsonIgnoreProperties(ignoreUnknown = true)
+	public static class EvidenceComments {
+		@JsonProperty("strong")
+		public List<EvidenceComment> strong = new ArrayList<>();
+
+		@JsonProperty("weak")
+		public List<EvidenceComment> weak = new ArrayList<>();
+	}
+
+	@JsonIgnoreProperties(ignoreUnknown = true)
+	public static class EvidenceComment {
+		public String quote;
+		public String comment;
 	}
 
 	@JsonIgnoreProperties(ignoreUnknown = true)

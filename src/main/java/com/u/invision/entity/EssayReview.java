@@ -41,19 +41,19 @@ public class EssayReview {
 	@Column(nullable = false)
 	private Integer energyScore;
 
-	@Column(nullable = false)
+	@Column(nullable = true)
 	private Double coreScore;
 
-	@Column(nullable = false)
+	@Column(nullable = true)
 	private Integer motivation;
 
-	@Column(nullable = false)
+	@Column(nullable = true)
 	private Integer growthPotential;
 
-	@Column(nullable = false)
+	@Column(nullable = true)
 	private Integer experienceSignals;
 
-	@Column(nullable = false)
+	@Column(nullable = true)
 	private Double finalScore;
 
 	@Column(nullable = false, columnDefinition = "text")
@@ -72,9 +72,19 @@ public class EssayReview {
 	private List<String> strongEvidences = new ArrayList<>();
 
 	@ElementCollection(fetch = FetchType.LAZY)
+	@CollectionTable(name = "essay_review_strong_evidence_reasons", joinColumns = @JoinColumn(name = "essay_review_id"))
+	@Column(name = "reason_text", columnDefinition = "text")
+	private List<String> strongEvidenceReasons = new ArrayList<>();
+
+	@ElementCollection(fetch = FetchType.LAZY)
 	@CollectionTable(name = "essay_review_weak_phrases", joinColumns = @JoinColumn(name = "essay_review_id"))
 	@Column(name = "line_text", columnDefinition = "text")
 	private List<String> weakEvidences = new ArrayList<>();
+
+	@ElementCollection(fetch = FetchType.LAZY)
+	@CollectionTable(name = "essay_review_weak_phrases_reasons", joinColumns = @JoinColumn(name = "essay_review_id"))
+	@Column(name = "reason_text", columnDefinition = "text")
+	private List<String> weakEvidenceReasons = new ArrayList<>();
 
 	@ElementCollection(fetch = FetchType.LAZY)
 	@CollectionTable(name = "essay_review_keywords", joinColumns = @JoinColumn(name = "essay_review_id"))

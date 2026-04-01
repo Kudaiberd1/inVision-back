@@ -14,6 +14,8 @@ public record ScoreOverviewResponse(
 		double chatLeadershipPoints,
 		double chatProactivenessPoints,
 		double chatEnergyPoints,
+		Integer codeforcesScore,
+		Integer leetcodeScore,
 		Integer untScore,
 		Double ieltsScore,
 		Integer toeflScore,
