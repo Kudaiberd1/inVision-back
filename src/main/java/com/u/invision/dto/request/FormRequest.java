@@ -34,17 +34,14 @@ public class FormRequest {
 	@NotBlank
 	private String schoolUniversity;
 
-	@NotNull
 	@DecimalMin("0")
 	@DecimalMax("140")
     private Integer unt_score;
 
-    @NotNull
     @DecimalMin("0.0")
     @DecimalMax("9.0")
     private BigDecimal IELTS;
 
-    @NotNull
     @DecimalMin("0")
     @DecimalMax("120")
     private Integer TOEFL;

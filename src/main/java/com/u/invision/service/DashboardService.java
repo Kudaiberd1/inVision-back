@@ -6,6 +6,7 @@ import com.u.invision.dto.interview.InterviewSessionResponse.ConversationTurn;
 import com.u.invision.dto.interview.InterviewSessionResponse.InterviewScoring;
 import com.u.invision.dto.request.ApplicationStatusPatchRequest;
 import com.u.invision.dto.response.ExtraActivityResponse;
+import com.u.invision.dto.response.dashboard.CandidateDetailResponse;
 import com.u.invision.dto.response.dashboard.ChatbotAnalysisResponse;
 import com.u.invision.dto.response.dashboard.ChatbotTurnResponse;
 import com.u.invision.dto.response.dashboard.CandidateSummaryResponse;
@@ -16,6 +17,7 @@ import com.u.invision.dto.response.dashboard.CvReviewPanelResponse;
 import com.u.invision.dto.response.dashboard.EssayReviewDetailResponse;
 import com.u.invision.dto.response.dashboard.EssayReviewPanelResponse;
 import com.u.invision.dto.response.dashboard.HighlightResponse;
+import com.u.invision.dto.response.dashboard.ScoreOverviewResponse;
 import com.u.invision.entity.ApplicationStatus;
 import com.u.invision.entity.CVReview;
 import com.u.invision.entity.EssayReview;
@@ -25,6 +27,7 @@ import com.u.invision.repository.CVReviewRepository;
 import com.u.invision.repository.EssayReviewRepository;
 import com.u.invision.repository.FormRepository;
 import com.u.invision.repository.InterviewResultRepository;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
@@ -59,7 +62,7 @@ public class DashboardService {
 			}
 			InterviewResult chat = findInterview(form).orElse(null);
 			CriteriaScoresResponse rowCriteria = averageRowCriteria(cv, essay);
-			Integer aiScore = computeAggregateAiScore(cv, essay, chat);
+			Integer aiScore = computeAggregateAiScore(cv, essay, chat, form.getUnt_score(), Double.valueOf(String.valueOf(form.getIELTS())), form.getTOEFL());
 			out.add(new CandidateSummaryResponse(
 					form.getId(),
 					form.getFullName(),
@@ -74,6 +77,149 @@ public class DashboardService {
 							.toLowerCase(Locale.ROOT)));
 		}
 		return out;
+	}
+
+	@Transactional(readOnly = true)
+	public CandidateDetailResponse getCandidateDetail(Long formId) {
+		Form form = loadForm(formId);
+		return new CandidateDetailResponse(
+				form.getId(),
+				form.getFullName(),
+				form.getEmail(),
+				form.getPhone(),
+				form.getDateOfBirth(),
+				form.getCity(),
+				form.getSchoolUniversity(),
+				form.getUnt_score(),
+				form.getIELTS(),
+				form.getTOEFL(),
+				form.getCodeforces(),
+				form.getLeetcode(),
+				form.getGithub(),
+				form.getLinkedin(),
+				form.getFieldOfStudy(),
+				form.getCvUrl(),
+				form.getMotivationEssayUrl(),
+				form.getVideoUrl(),
+				form.getCreatedAt(),
+				form.getStatus() != null ? form.getStatus() : ApplicationStatus.PENDING);
+	}
+
+	@Transactional(readOnly = true)
+	public ScoreOverviewResponse getScoreOverview(Long formId) {
+		Form form = loadForm(formId);
+		CVReview cv = cvReviewRepository.findByForm_Id(formId).orElse(null);
+		EssayReview essay = essayReviewRepository.findByForm_Id(formId).orElse(null);
+		InterviewResult chat = findInterview(form).orElse(null);
+
+		double cvPoints = 0;
+		double essayPoints = 0;
+		double chatPoints = 0;
+		double cvLeadershipPoints = 0;
+		double cvProactivenessPoints = 0;
+		double cvEnergyPoints = 0;
+		double essayLeadershipPoints = 0;
+		double essayProactivenessPoints = 0;
+		double essayEnergyPoints = 0;
+		double chatLeadershipPoints = 0;
+		double chatProactivenessPoints = 0;
+		double chatEnergyPoints = 0;
+		int untPoints = 0;
+		int ieltsPoints = 0;
+		int toeflPoints = 0;
+
+		if (cv != null && cv.getFinalScore() != null) {
+			cvLeadershipPoints = ((double) cv.getLeadershipScore() / 100) * 3;
+			cvProactivenessPoints = ((double) cv.getProactivenessScore() / 100) * 3;
+			cvEnergyPoints = ((double) cv.getEnergyScore() / 100) * 3;
+			cvPoints = cvLeadershipPoints + cvProactivenessPoints + cvEnergyPoints;
+		}
+		if (essay != null && essay.getFinalScore() != null) {
+			essayLeadershipPoints = ((double) essay.getLeadershipScore() / 100) * 3;
+			essayProactivenessPoints = ((double) essay.getProactivenessScore() / 100) * 3;
+			essayEnergyPoints = ((double) essay.getEnergyScore() / 100) * 3;
+			essayPoints = essayLeadershipPoints + essayProactivenessPoints + essayEnergyPoints;
+		}
+		if (chat != null && chat.getChatbotScore() != null) {
+			chatLeadershipPoints = (chat.getLeadershipScore() / 100.0) * 3;
+			chatProactivenessPoints = (chat.getProactivenessScore() / 100.0) * 3;
+			chatEnergyPoints = (chat.getEnergyScore() / 100.0) * 3;
+			chatPoints = chatLeadershipPoints + chatProactivenessPoints + chatEnergyPoints;
+		}
+
+		Integer unt = form.getUnt_score();
+		if (unt != null) {
+			if (unt >= 120) {
+				untPoints = 5;
+			} else if (unt >= 110) {
+				untPoints = 4;
+			} else if (unt >= 100) {
+				untPoints = 3;
+			} else if (unt >= 90) {
+				untPoints = 2;
+			} else if (unt >= 80) {
+				untPoints = 1;
+			}
+		}
+
+		if (form.getIELTS() != null) {
+			double ielts = form.getIELTS().doubleValue();
+			if (ielts >= 8.0) {
+				ieltsPoints = 5;
+			} else if (ielts >= 7.5) {
+				ieltsPoints = 4;
+			} else if (ielts >= 7.0) {
+				ieltsPoints = 3;
+			} else if (ielts >= 6.5) {
+				ieltsPoints = 2;
+			} else if (ielts >= 6.0) {
+				ieltsPoints = 1;
+			}
+		}
+
+		Integer toefl = form.getTOEFL();
+		if (toefl != null) {
+			if (toefl >= 110) {
+				toeflPoints = 5;
+			} else if (toefl >= 100) {
+				toeflPoints = 4;
+			} else if (toefl >= 90) {
+				toeflPoints = 3;
+			} else if (toefl >= 80) {
+				toeflPoints = 2;
+			} else if (toefl >= 60) {
+				toeflPoints = 1;
+			}
+		}
+
+		int overall = computeAggregateAiScore(
+				cv,
+				essay,
+				chat,
+				unt,
+				form.getIELTS() != null ? form.getIELTS().doubleValue() : null,
+				toefl);
+
+		return new ScoreOverviewResponse(
+				overall,
+				cvPoints,
+				essayPoints,
+				chatPoints,
+				cvLeadershipPoints,
+				cvProactivenessPoints,
+				cvEnergyPoints,
+				essayLeadershipPoints,
+				essayProactivenessPoints,
+				essayEnergyPoints,
+				chatLeadershipPoints,
+				chatProactivenessPoints,
+				chatEnergyPoints,
+				unt,
+				form.getIELTS() != null ? form.getIELTS().doubleValue() : null,
+				toefl,
+				untPoints,
+				ieltsPoints,
+				toeflPoints);
 	}
 
 	@Transactional(readOnly = true)
@@ -176,25 +322,64 @@ public class DashboardService {
 				.replaceAll("(^-|-$)", "");
 	}
 
-	private static Integer computeAggregateAiScore(CVReview cv, EssayReview essay, InterviewResult chat) {
+	private static Integer computeAggregateAiScore(CVReview cv, EssayReview essay, InterviewResult chat, Integer unt, Double ielts, Integer toefl) {
 		double sum = 0;
-		int n = 0;
 		if (cv != null && cv.getFinalScore() != null) {
-			sum += cv.getFinalScore();
-			n++;
+			sum += ((double) cv.getLeadershipScore() /100)*3;
+            sum += ((double) cv.getProactivenessScore() /100)*3;
+            sum += ((double) cv.getEnergyScore() /100)*3;
 		}
 		if (essay != null && essay.getFinalScore() != null) {
-			sum += essay.getFinalScore();
-			n++;
+			sum += ((double) essay.getLeadershipScore() /100)*3;
+            sum += ((double) essay.getProactivenessScore() /100)*3;
+            sum += ((double) essay.getEnergyScore() /100)*3;
 		}
 		if (chat != null && chat.getChatbotScore() != null) {
-			sum += chat.getChatbotScore();
-			n++;
+			sum += (chat.getLeadershipScore()/100)*3;
+            sum += (chat.getProactivenessScore()/100)*3;
+            sum += (chat.getEnergyScore()/100)*3;
 		}
-		if (n == 0) {
-			return null;
-		}
-		return (int) Math.round(sum / n);
+        if(unt != null) {
+            if(unt >= 120){
+                sum+=5;
+            }else if(unt >= 110){
+                sum+=4;
+            }else if(unt >= 100){
+                sum+=3;
+            }else if(unt >= 90){
+                sum+=2;
+            }else if(unt >= 80){
+                sum+=1;
+            }
+        }
+        if(ielts != null) {
+            if(ielts >= 8.0){
+                sum += 5;
+            } else if(ielts >= 7.5){
+                sum += 4;
+            } else if(ielts >= 7.0){
+                sum += 3;
+            } else if(ielts >= 6.5){
+                sum += 2;
+            } else if(ielts >= 6.0){
+                sum += 1;
+            }
+        }
+        if(toefl != null) {
+            if(toefl >= 110){
+                sum += 5;
+            } else if(toefl >= 100){
+                sum += 4;
+            } else if(toefl >= 90){
+                sum += 3;
+            } else if(toefl >= 80){
+                sum += 2;
+            } else if(toefl >= 60){
+                sum += 1;
+            }
+        }
+
+		return (int) Math.round(sum);
 	}
 
 	private static CriteriaScoresResponse averageRowCriteria(CVReview cv, EssayReview essay) {
