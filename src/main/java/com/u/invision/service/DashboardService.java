@@ -76,7 +76,7 @@ public class DashboardService {
 					chat,
 					form.getUnt_score(),
 					form.getIELTS() != null ? form.getIELTS().doubleValue() : null,
-					form.getTOEFL(), cfReview.getFinalScore(), lcReview.getFinalScore());
+					form.getTOEFL(), cfReview != null ? cfReview.getFinalScore() : 0, lcReview != null ? lcReview.getFinalScore() : 0);
 			out.add(new CandidateSummaryResponse(
 					form.getId(),
 					form.getFullName(),
